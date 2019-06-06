@@ -47,7 +47,7 @@ information. The canonical call looks like this:
 	}
 */
 func NewError(msg string, vals ...interface{}) error {
-	return create(nil, NoCode, msg, vals...)
+	return create(nil, NoCode, msg, 2, vals...)
 }
 
 /*
@@ -81,12 +81,12 @@ included in an error, msg can be an empty string:
 If cause is nil, Propagate returns nil. This allows elision of some "if err !=
 nil" checks.
 */
-func Propagate(cause error, msg string, vals ...interface{}) error {
+func Propagate(cause error, msg string, callerSkip int, vals ...interface{}) error {
 	if cause == nil {
 		// Allow calling Propagate without checking whether there is error
 		return nil
 	}
-	return create(cause, NoCode, msg, vals...)
+	return create(cause, NoCode, msg, callerSkip, vals...)
 }
 
 /*
@@ -118,7 +118,7 @@ const NoCode ErrorCode = math.MaxUint16
 NewErrorWithCode is similar to NewError but also attaches an error code.
 */
 func NewErrorWithCode(code ErrorCode, msg string, vals ...interface{}) error {
-	return create(nil, code, msg, vals...)
+	return create(nil, code, msg, 2, vals...)
 }
 
 /*
@@ -134,7 +134,7 @@ func PropagateWithCode(cause error, code ErrorCode, msg string, vals ...interfac
 		// Allow calling PropagateWithCode without checking whether there is error
 		return nil
 	}
-	return create(cause, code, msg, vals...)
+	return create(cause, code, msg, 2, vals...)
 }
 
 /*
@@ -185,7 +185,7 @@ type stacktrace struct {
 	line     int
 }
 
-func create(cause error, code ErrorCode, msg string, vals ...interface{}) error {
+func create(cause error, code ErrorCode, msg string, callerSkip int, vals ...interface{}) error {
 	// If no error code specified, inherit error code from the cause.
 	if code == NoCode {
 		code = GetCode(cause)
@@ -198,7 +198,7 @@ func create(cause error, code ErrorCode, msg string, vals ...interface{}) error 
 	}
 
 	// Caller of create is NewError or Propagate, so user's code is 2 up.
-	pc, file, line, ok := runtime.Caller(2)
+	pc, file, line, ok := runtime.Caller(callerSkip)
 	if !ok {
 		return err
 	}
